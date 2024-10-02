@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Searcher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #444;
+    }
+
+    .search-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    #searchInput {
+      padding: 10px;
+      border: 2px solid #007BFF;
+      border-radius: 5px;
+      width: 300px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    #searchInput:focus {
+      border-color: #0056b3;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #photosContainer {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      max-width: 90%;
+    }
+
+    #photosContainer img {
+      width: 100%;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s;
+    }
+
+    #photosContainer img:hover {
+      transform: scale(1.05);
+    }
+
+    .attribution {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .loading, .error, .no-results {
+      margin-top: 20px;
+      color: #007BFF;
+      font-size: 18px;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Search Photos</h1>
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="Search photos">
+    <button>Search</button>
+  </div>
+  <div id="loading" class="loading" style="display:none;">Loading...</div>
+  <div id="error" class="error" style="display:none;"></div>
+  <div id="noResults" class="no-results" style="display:none;"></div>
+  <div id="photosContainer"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      function searchPhotos() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        // Reset messages
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('error').style.display = 'none';
+        document.getElementById('noResults').style.display = 'none';
+        document.getElementById('photosContainer').innerHTML = '';
+
+        fetch('http://localhost:5000/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query }),
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(result => {
+          document.getElementById('loading').style.display = 'none';
+
+          if (result.results.length === 0) {
+            document.getElementById('noResults').innerText = 'No results found.';
+            document.getElementById('noResults').style.display = 'block';
+          } else {
+            displayPhotos(result.results);
+          }
+        })
+        .catch(error => {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('error').innerText = 'Error fetching photos: ' + error.message;
+          document.getElementById('error').style.display = 'block';
+        });
+      }
+
+      function displayPhotos(photos) {
+        const photosContainer = document.getElementById('photosContainer');
+
+        photos.forEach(photo => {
+          const img = document.createElement('img');
+          img.src = photo.urls.regular;
+          img.alt = photo.alt_description;
+          img.title = photo.alt_description;
+
+          img.onclick = () => {
+            window.open(photo.urls.full);
+          };
+
+          const attribution = document.createElement('p');
+          attribution.className = 'attribution';
+          attribution.innerHTML = `Photo by <a href="${photo.user.links.html}" target="_blank">${photo.user.name}</a> on <a href="https://unsplash.com" target="_blank">Unsplash</a>`;
+          
+          photosContainer.appendChild(img);
+          photosContainer.appendChild(attribution);
+        });
+      }
+
+      document.querySelector('button').onclick = searchPhotos;
+
+      // Allow Enter key to trigger search
+      document.getElementById('searchInput').addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+          searchPhotos();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
